@@ -7,29 +7,42 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System.Net.Http;
 
 namespace movies_api
 {
     public static class Movies
     {
-        [FunctionName("movies-api")]
+        const string get = "get";
+        const string post = "post";
+        const string patch = "patch";
+
+        [FunctionName("movies")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post", "patch", Route = null)] HttpRequest req,
             ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            switch (req.Method.ToLower())
+            {
+                case get:
+                    {
+                        return new JsonResult("get");
+                    }
 
-            string name = req.Query["name"];
+                case post:
+                    {
+                        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+                        dynamic data = JsonConvert.DeserializeObject(requestBody);
+                        return new JsonResult("post");
+                    }
 
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
-
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-            return new OkObjectResult(responseMessage);
+                case patch:
+                    {
+                        return new JsonResult("patch");
+                    }
+                default:
+                    return new BadRequestObjectResult("This API only accepts GET|POST|PATCH");
+            }
         }
     }
 }
